@@ -1,0 +1,21 @@
+# dia, hora_inicio, hora_fin
+Lunes, 08:00, 10:00
+Lunes, 10:00, 12:00
+Lunes, 12:00, 14:00
+Lunes, 14:00, 16:00
+Martes, 08:00, 10:00
+Martes, 10:00, 12:00
+Martes, 12:00, 14:00
+Martes, 14:00, 16:00
+Miercoles, 08:00, 10:00
+Miercoles, 10:00, 12:00
+Miercoles, 12:00, 14:00
+Miercoles, 14:00, 16:00
+Jueves, 08:00, 10:00
+Jueves, 10:00, 12:00
+Jueves, 12:00, 14:00
+Jueves, 14:00, 16:00
+Viernes, 08:00, 10:00
+Viernes, 10:00, 12:00
+Viernes, 12:00, 14:00
+Viernes, 14:00, 16:00

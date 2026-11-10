@@ -1,0 +1,21 @@
+# nombre, capacidad
+Salon 101, 30
+Salon 102, 35
+Salon 103, 40
+Salon 104, 45
+Salon 105, 50
+Salon 201, 30
+Salon 202, 35
+Salon 203, 40
+Salon 204, 45
+Salon 205, 50
+Laboratorio 1, 24
+Laboratorio 2, 28
+Laboratorio 3, 32
+Laboratorio 4, 36
+Laboratorio 5, 40
+Auditorio A, 100
+Auditorio B, 120
+Sala de Estudio 1, 20
+Sala de Estudio 2, 25
+Sala de Estudio 3, 30

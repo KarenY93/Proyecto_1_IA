@@ -1,0 +1,21 @@
+# id_curso, nombre_materia, profesor_id, grupo
+C01, Algebra Lineal, P01, 50
+C02, Calculo Diferencial, P02, 51
+C03, Programacion I, P03, 50
+C04, Estructuras de Datos, P04, 50
+C05, Bases de Datos, P05, 51
+C06, Inteligencia Artificial, P06, 51
+C07, Redes de Computadoras, P07, 50
+C08, Sistemas Operativos, P08, 51
+C09, Arquitectura de Computadores, P09, 50
+C10, Probabilidad y Estadistica, P10, 50
+C11, Fisica General, P11, 51
+C12, Quimica General, P12, 51
+C13, Ingles Tecnico, P13, 50
+C14, Etica Profesional, P14, 50
+C15, Ingenieria de Software, P15, 51
+C16, Compiladores, P16, 50
+C17, Computacion Grafica, P17, 51
+C18, Seguridad Informatica, P18, 50
+C19, Analisis de Algoritmos, P19, 51
+C20, Proyecto de Grado, P20, 50
