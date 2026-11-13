@@ -14,3 +14,4 @@ class Nodo:
         if self.f == otro.f:
             return self.h < otro.h
         return self.f < otro.f
+

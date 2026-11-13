@@ -191,3 +191,4 @@ A continuación se detallan respuestas claras a posibles preguntas que el docent
 
 #### 5. ¿Qué ocurre si no existe ninguna solución posible para el horario?
 > **Respuesta:** El ciclo `while frontera:` continuará hasta agotar todos los estados válidos posibles. Al vaciarse la frontera sin llegar a la meta, el algoritmo retorna `encontro_solucion: False` y `solucion: None`, cumpliendo el contrato de comunicación.
+

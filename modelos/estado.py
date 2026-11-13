@@ -73,3 +73,4 @@ class Estado:
 
     def __repr__(self) -> str:
         return f"Estado({len(self)} asignadas)"
+

@@ -71,3 +71,4 @@ def cargar_profesores(ruta_archivo):
                 h_fin = partes[5].replace(")", "").strip()
                 profesores[id_prof] = (dia_no, f"{h_ini}-{h_fin}")
     return profesores
+

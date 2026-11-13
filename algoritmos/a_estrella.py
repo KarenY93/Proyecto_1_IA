@@ -108,3 +108,4 @@ def a_estrella(clases, franjas, salones, profesores_no_disponibles=None):
             "nodos_explorados": nodos_explorados,
             "tiempo_ejecucion": tiempo_total
         }
+

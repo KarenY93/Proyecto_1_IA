@@ -18,3 +18,4 @@ class Clase:
             raise ValueError("id_curso no puede estar vacío.")
         if self.numero_estudiantes is not None and self.numero_estudiantes < 0:
             raise ValueError(f"numero_estudiantes negativo en {self.id_curso!r}.")
+
