@@ -20,24 +20,16 @@ def costo_paso(clase, dia, franja, profesores_no_disponibles):
 
 
 def _salones_a_probar(estado, salones, romper_simetria):
-    """Rompe la simetria entre salones intercambiables.
-
-    Si los salones no tienen capacidad ni tipo, dos horarios que solo difieren
-    en el NOMBRE de un salon sin usar son equivalentes. Basta probar los
-    salones ya usados y el primer salon nunca usado. Solo es valido mientras
-    todos los salones sean intercambiables.
-    """
+    """Reduce salones equivalentes cuando no tienen capacidad ni tipo."""
     if not romper_simetria:
         return salones
+
     usados = {asignacion[3] for asignacion in estado.asignaciones}
-    candidatos = []
-    nuevo_agregado = False
+    candidatos = [salon for salon in salones if salon in usados]
     for salon in salones:
-        if salon in usados:
+        if salon not in usados:
             candidatos.append(salon)
-        elif not nuevo_agregado:
-            candidatos.append(salon)
-            nuevo_agregado = True
+            break
     return candidatos
 
 

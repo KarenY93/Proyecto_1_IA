@@ -55,7 +55,7 @@ Consecuencia importante: **cada estado se alcanza por un único camino**, de mod
 
 ### 4.1. Búsqueda en amplitud (BFS)
 
-Usa una cola FIFO (una lista con un índice al frente, para no desplazar elementos con `pop(0)`). Expande todos los estados de un nivel antes de pasar al siguiente, por lo que encuentra una solución de profundidad mínima.
+Usa una cola FIFO implementada con `collections.deque`. Expande los estados por nivel y devuelve la primera meta que genera, por lo que encuentra una solución de profundidad mínima. `deque` pertenece a la biblioteca estándar de Python; no se usan bibliotecas externas.
 
 - **Completitud:** sí, con ramificación finita (el dominio de días, franjas y salones es finito).
 - **Optimalidad:** óptima en profundidad. Como todas las soluciones completas tienen la misma profundidad `d`, BFS devuelve la primera que encuentra, que no es necesariamente la de menor costo cuando hay penalizaciones.
@@ -63,7 +63,7 @@ Usa una cola FIFO (una lista con un índice al frente, para no desplazar element
 
 ### 4.2. Búsqueda de costo uniforme
 
-Expande primero el estado con menor costo acumulado `g(n)`. La restricción del proyecto prohíbe `heapq`, así que la frontera se guarda en **cubetas por costo**: un diccionario `{costo_acumulado: [nodos]}`. Como los costos de paso son enteros (1 o 6), obtener el menor costo es avanzar un contador, lo que cuesta O(1) amortizado. La prueba de meta se hace al *retirar* el nodo, que es lo que garantiza la optimalidad.
+Expande primero el estado con menor costo acumulado `g(n)`. La frontera se guarda en **cubetas por costo**: un diccionario `{costo_acumulado: [estados]}`. Como los costos de paso son enteros (1 o 6), se avanza un contador hasta encontrar una cubeta con nodos. La meta se acepta al retirar un estado de menor costo; también se devuelve antes si una meta generada alcanza el costo mínimo posible, `total_clases`.
 
 - **Completitud y optimalidad:** sí, porque cada paso cuesta al menos 1 (costos positivos).
 - **Complejidad:** `O(b^(1 + C*/ε))`, con `C*` el costo de la solución óptima y `ε` el costo mínimo de paso.
@@ -87,7 +87,7 @@ Ejecuta búsquedas en profundidad con límite creciente. La pila de recursión e
 
 ## 5. Optimizaciones aplicadas
 
-Todas se implementaron con listas, conjuntos y diccionarios de Python; la lógica solo importa `time` para medir la duración. El módulo `algoritmos/comun.py` concentra el código compartido (sucesores, costo de paso, prechequeo y formato del resultado) para que los tres algoritmos exploren exactamente el mismo espacio.
+Las estructuras de búsqueda se implementan con tipos de Python y bibliotecas de su biblioteca estándar: `collections.deque` para la cola de BFS y diccionarios/listas para las cubetas de costo uniforme. No se usan bibliotecas externas ni `heapq`. El módulo `algoritmos/comun.py` concentra la generación de sucesores, el costo de paso, el prechequeo y el formato de resultados.
 
 | Optimización | Qué hace | Por qué es válida |
 |---|---|---|
@@ -105,7 +105,7 @@ Se verificó la equivalencia de las versiones optimizadas con las originales sob
 
 ### 5.1. Conteo de nodos
 
-Para comparar ejecuciones se registran los nodos explorados, el tiempo (`time.perf_counter`) y si se encontró solución. En BFS y costo uniforme se cuenta un nodo cuando se retira de la frontera; en IDDFS se cuenta cada llamada recursiva, y los estados se vuelven a contar cuando un límite posterior repite la búsqueda.
+Para comparar ejecuciones se registran los nodos explorados, el tiempo (`time.perf_counter`) y si se encontró solución. BFS y costo uniforme cuentan los estados retirados de la frontera; una meta devuelta al generarse no se cuenta como retirada. IDDFS cuenta cada llamada recursiva, incluidos los estados que vuelve a explorar al aumentar el límite.
 
 ## 6. Pruebas y resultados
 
@@ -114,11 +114,13 @@ Para comparar ejecuciones se registran los nodos explorados, el tiempo (`time.pe
 | Caso | Entrada | Resultado esperado |
 |---|---|---|
 | Mínimo | Una clase, una franja y un salón. | Encuentra una asignación válida. |
+| Entrada vacía | Sin clases, franjas ni salones. | Devuelve una solución vacía válida. |
 | Soluble | Dos clases comparten profesor; hay un salón y dos franjas. | Las asigna en franjas distintas. |
 | Sin solución | Dos clases comparten profesor y solo hay una franja, aunque existan dos salones. | `encontro_solucion: False` y `solucion: None`. |
+| Tope de nodos | Una clase y `max_nodos=0`. | No devuelve solución e indica `limite_alcanzado: True`. |
 | Preferencia blanda (costo uniforme) | Una franja no disponible para el profesor y otra disponible. | Escoge la franja disponible, de menor costo. |
 
-El caso sin solución se ejecuta con el prechequeo desactivado (`prechequeo=False`); de lo contrario el prechequeo responde sin recorrer el árbol y la prueba dejaría de verificar la búsqueda. La función `validar_horario` comprueba que cada clase se asigne una vez y que no haya conflictos de salón, profesor ni grupo.
+El caso sin solución se ejecuta con el prechequeo desactivado (`prechequeo=False`); de lo contrario el prechequeo responde sin recorrer el árbol y la prueba dejaría de verificar la búsqueda. Los tres scripts usan `validar_horario`, que comprueba que cada clase se asigne una vez y que no haya conflictos de salón, profesor ni grupo.
 
 ### 6.2. Ejecución con los datos del proyecto
 
@@ -175,12 +177,12 @@ Desde la carpeta raíz del proyecto en Windows:
 
 ```powershell
 python .\pruebas\prueba_bfs.py
-python .\pruebas\prueba_costo_uniforma.py
+python .\pruebas\prueba_costo_uniforme.py
 python .\pruebas\prueba_profundidad_iterativa.py
 python .\pruebas\escalabilidad.py
 ```
 
-Cada script informa el resultado, los nodos explorados, el tiempo y una muestra de las asignaciones, y comprueba que no existan conflictos duros.
+Cada prueba de algoritmo verifica casos vacíos, posibles, imposibles y el límite de nodos; costo uniforme también comprueba la preferencia del profesor. Después muestra el resultado con una muestra pequeña de los datos del proyecto y valida las asignaciones con `validar_horario`.
 
 ## 10. Preguntas y respuestas para la sustentación
 
