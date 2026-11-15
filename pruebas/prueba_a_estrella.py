@@ -1,36 +1,77 @@
 import os
 import sys
 
-# Asegurar que se puedan importar modulos desde la raiz del proyecto
 ruta_proyecto = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ruta_proyecto not in sys.path:
     sys.path.insert(0, ruta_proyecto)
 
+from algoritmos.a_estrella import a_estrella
 from io_datos.lector import (
     cargar_cursos,
     cargar_franjas,
-    cargar_salones,
     cargar_profesores,
+    cargar_salones,
 )
-from algoritmos.a_estrella import a_estrella
+from modelos.clase import Clase
+from pruebas.validar_horario import validar_horario
+
+
+def probar_casos_basicos():
+    # 1. Casos solubles minimos
+    casos = [
+        ([], [], []),
+        ([Clase("M1", "Materia", "PM", "GM")], [("Lunes", "07-09")], ["S1"]),
+        (
+            [Clase("D1", "Materia 1", "P1", "G1"), Clase("D2", "Materia 2", "P1", "G2")],
+            [("Lunes", "07-09"), ("Lunes", "09-11")],
+            ["S1"],
+        ),
+    ]
+    for clases, franjas, salones in casos:
+        validar_horario(a_estrella(clases, franjas, salones), clases)
+
+    # 2. Caso imposible sin prechequeo (recorre arbol)
+    imposibles = [
+        Clase("X1", "Materia 1", "P1", "G1"),
+        Clase("X2", "Materia 2", "P1", "G2"),
+    ]
+    resultado = a_estrella(
+        imposibles, [("Lunes", "07-09")], ["S1", "S2"], prechequeo=False
+    )
+    assert not resultado["encontro_solucion"]
+    assert resultado["solucion"] is None
+
+    # 3. Caso tope de nodos (max_nodos)
+    limite = a_estrella(
+        [Clase("L1", "Materia", "P1", "G1")],
+        [("Lunes", "07-09")],
+        ["S1"],
+        max_nodos=0,
+    )
+    assert limite["limite_alcanzado"]
+    assert not limite["encontro_solucion"]
+
+    # 4. Caso preferencia blanda: debe elegir la franja disponible para evitar penalizacion
+    clase = [Clase("P1", "Calculo", "DOC1", "G1")]
+    franjas = [("Lunes", "07-09"), ("Martes", "09-11")]
+    resultado = a_estrella(clase, franjas, ["S1"], {"DOC1": franjas[0]})
+    validar_horario(resultado, clase)
+    assert resultado["solucion"][0][1:3] == franjas[1], "A* debio evitar la franja penalizada"
+    assert resultado["costo_solucion"] == 1, "El costo optimo debe ser 1 (sin penalizacion)"
 
 
 def main():
+    probar_casos_basicos()
     print("=" * 60)
     print(" PRUEBA DE BUSQUEDA INFORMADA: ALGORITMO A* ")
     print("=" * 60)
+    print("Casos minimo, posible, imposible, limite y preferencia blanda: correctos.")
 
-    # 1. Cargar datos desde los archivos TXT
     ruta_archivos = os.path.join(ruta_proyecto, "archivos")
-    ruta_cursos = os.path.join(ruta_archivos, "cursos.txt")
-    ruta_franjas = os.path.join(ruta_archivos, "franjas.txt")
-    ruta_salones = os.path.join(ruta_archivos, "salones.txt")
-    ruta_profesores = os.path.join(ruta_archivos, "profesores.txt")
-
-    cursos = cargar_cursos(ruta_cursos)
-    franjas = cargar_franjas(ruta_franjas)
-    salones = cargar_salones(ruta_salones)
-    profesores = cargar_profesores(ruta_profesores)
+    cursos = cargar_cursos(os.path.join(ruta_archivos, "cursos.txt"))
+    franjas = cargar_franjas(os.path.join(ruta_archivos, "franjas.txt"))
+    salones = cargar_salones(os.path.join(ruta_archivos, "salones.txt"))
+    profesores = cargar_profesores(os.path.join(ruta_archivos, "profesores.txt"))
 
     print(f"Total clases a programar: {len(cursos)}")
     print(f"Total franjas disponibles: {len(franjas)}")
@@ -38,81 +79,30 @@ def main():
     print(f"Total profesores leidos: {len(profesores)}")
     print("-" * 60)
 
-    # 2. Ejecutar algoritmo A*
     print("Ejecutando A*...")
-    resultado = a_estrella(cursos, franjas, salones, profesores)
+    resultado = a_estrella(cursos, franjas, salones, profesores, max_nodos=50000)
 
-    # 3. Mostrar resultados y estadisticas
     print("\nResultados del algoritmo:")
     print(f"- Encontro solucion: {resultado['encontro_solucion']}")
+    print(f"- Costo solucion:    {resultado['costo_solucion']}")
     print(f"- Nodos explorados:  {resultado['nodos_explorados']}")
     print(f"- Tiempo ejecucion:  {resultado['tiempo_ejecucion']} s")
+    print(f"- Limite alcanzado:  {resultado['limite_alcanzado']}")
 
-    if not resultado["encontro_solucion"]:
-        print("\nERROR: No se pudo encontrar una asignacion valida.")
-        return
-
-    solucion = resultado["solucion"]
-    print(f"- Clases asignadas:  {len(solucion)} de {len(cursos)}")
-
-    # 4. Validacion estricta de restricciones duras
-    print("\nVerificando restricciones del problema...")
-
-    salones_ocupados = set()
-    profesores_ocupados = set()
-    grupos_ocupados = set()
-    clases_asignadas = set()
+    # Validar con la funcion comun
+    validar_horario(resultado, cursos)
 
     mapa_cursos = {c.id_curso: c for c in cursos}
-    conflictos = 0
-    violaciones_blandas = 0
+    violaciones_blandas = sum(
+        1 for id_curso, dia, franja, _ in resultado["solucion"]
+        if profesores.get(mapa_cursos[id_curso].id_profesor) == (dia, franja)
+    )
+    print(f"- Clases en horario no disponible: {violaciones_blandas}")
 
-    for id_curso, dia, franja, salon in solucion:
-        curso = mapa_cursos[id_curso]
-
-        # Validar clase unica
-        if id_curso in clases_asignadas:
-            print(f"Conflicto: la clase {id_curso} esta repetida.")
-            conflictos += 1
-        clases_asignadas.add(id_curso)
-
-        # Validar salon libre
-        llave_salon = (dia, franja, salon)
-        if llave_salon in salones_ocupados:
-            print(f"Conflicto de salon: {salon} en {dia} {franja}")
-            conflictos += 1
-        salones_ocupados.add(llave_salon)
-
-        # Validar profesor libre
-        llave_prof = (dia, franja, curso.id_profesor)
-        if llave_prof in profesores_ocupados:
-            print(f"Conflicto de profesor: {curso.id_profesor} en {dia} {franja}")
-            conflictos += 1
-        profesores_ocupados.add(llave_prof)
-
-        # Validar grupo de estudiantes libre
-        llave_grupo = (dia, franja, curso.grupo)
-        if llave_grupo in grupos_ocupados:
-            print(f"Conflicto de grupo: {curso.grupo} en {dia} {franja}")
-            conflictos += 1
-        grupos_ocupados.add(llave_grupo)
-
-        # Contar restriccion blanda
-        if profesores.get(curso.id_profesor) == (dia, franja):
-            violaciones_blandas += 1
-
-    # Comprobaciones con assert
-    assert len(clases_asignadas) == len(cursos), "No se asignaron todas las clases"
-    assert conflictos == 0, f"Se encontraron {conflictos} conflictos en el horario"
-
-    print("-> Restricciones duras: 0 conflictos detectados (Exito)")
-    print(f"-> Clases en horario no disponible de profesores: {violaciones_blandas}")
-
-    # 5. Vista previa de los horarios generados
     print("\nHorario asignado (primeras 5 clases):")
     print(f"{'Curso':<8} {'Materia':<25} {'Profesor':<8} {'Grupo':<6} {'Dia':<10} {'Franja':<13} {'Salon'}")
     print("-" * 85)
-    for id_curso, dia, franja, salon in solucion[:5]:
+    for id_curso, dia, franja, salon in resultado["solucion"][:5]:
         c = mapa_cursos[id_curso]
         print(f"{id_curso:<8} {c.nombre_materia:<25} {c.id_profesor:<8} {c.grupo:<6} {dia:<10} {franja:<13} {salon}")
 
@@ -121,4 +111,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

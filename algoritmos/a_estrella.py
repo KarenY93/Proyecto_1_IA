@@ -3,109 +3,115 @@ import time
 try:
     from modelos.estado import Estado
     from algoritmos.nodo import Nodo
+    from algoritmos.comun import (
+        LimiteDeNodos,
+        armar_resultado,
+        costo_paso,
+        generar_sucesores,
+        verificar_factibilidad,
+    )
 except ImportError:
     from ..modelos.estado import Estado
     from .nodo import Nodo
+    from .comun import (
+        LimiteDeNodos,
+        armar_resultado,
+        costo_paso,
+        generar_sucesores,
+        verificar_factibilidad,
+    )
 
 
 def calcular_heuristica(estado, total_clases):
-    # La heuristica calcula cuantas clases faltan por asignar.
-    # Es admisible porque cada clase restante costara como minimo 1 unidad en el horario.
+    # La heuristica estima cuantas clases faltan por programar.
+    # Es admisible porque cada clase restante costara como minimo 1 unidad en el horario real.
     return total_clases - len(estado)
 
 
-def a_estrella(clases, franjas, salones, profesores_no_disponibles=None):
-    """Ejecuta el algoritmo A* para encontrar un horario sin conflictos."""
+def a_estrella(
+    clases,
+    franjas,
+    salones,
+    profesores_no_disponibles=None,
+    max_nodos=None,
+    romper_simetria_salones=True,
+    prechequeo=True,
+):
+    """Busqueda informada A*: expande el nodo con menor evaluacion f(n) = g(n) + h(n).
+
+    - g(n): costo real acumulado (1 por clase + 5 si cae en horario no disponible).
+    - h(n): clases restantes por asignar (admisible y consistente).
+    - Al usar un orden fijo de clases, el espacio es un arbol puro (sin ciclos ni
+      caminos redundantes), por lo que no requiere conjunto de visitados.
+    """
     if profesores_no_disponibles is None:
         profesores_no_disponibles = {}
 
-    tiempo_inicio = time.time()
-    nodos_explorados = 0
+    inicio = time.perf_counter()
     total_clases = len(clases)
 
-    # Estado inicial vacio y nodo raiz
+    # 1. Prechequeo de factibilidad para detectar casos imposibles de inmediato
+    if prechequeo:
+        motivo = verificar_factibilidad(clases, franjas, salones)
+        if motivo:
+            return armar_resultado(None, None, 0, inicio, motivo=motivo)
+
     estado_inicial = Estado()
+    if total_clases == 0:
+        return armar_resultado(estado_inicial, 0, 1, inicio)
+
     h_inicial = calcular_heuristica(estado_inicial, total_clases)
     nodo_raiz = Nodo(estado=estado_inicial, g=0, h=h_inicial)
 
-    # Lista abierta (frontera) y conjunto de estados visitados
     frontera = [nodo_raiz]
-    visitados = set()
+    nodos_explorados = 0
+    solucion = None
+    costo_solucion = None
+    limite_alcanzado = False
 
-    solucion_encontrada = None
-
-    while frontera:
-        # Busqueda manual del nodo con menor f = g + h
-        pos_mejor = 0
-        for i in range(1, len(frontera)):
-            if frontera[i].f < frontera[pos_mejor].f:
-                pos_mejor = i
-            elif frontera[i].f == frontera[pos_mejor].f:
-                # Si empatan en f, se escoge el que tenga menor h para avanzar a la meta
-                if frontera[i].h < frontera[pos_mejor].h:
+    try:
+        while frontera:
+            # Buscar el nodo con menor f usando el comparador __lt__ de Nodo
+            pos_mejor = 0
+            for i in range(1, len(frontera)):
+                if frontera[i] < frontera[pos_mejor]:
                     pos_mejor = i
 
-        actual = frontera.pop(pos_mejor)
-        nodos_explorados += 1
+            actual = frontera.pop(pos_mejor)
+            nodos_explorados += 1
 
-        # Si ya asignamos todas las clases, llegamos a la meta
-        if len(actual.estado) == total_clases:
-            solucion_encontrada = actual.estado
-            break
+            if max_nodos is not None and nodos_explorados > max_nodos:
+                raise LimiteDeNodos
 
-        visitados.add(actual.estado.asignaciones)
+            # Prueba de meta: se alcanzaron todas las clases
+            if len(actual.estado) == total_clases:
+                solucion = actual.estado
+                costo_solucion = actual.g
+                break
 
-        # Seleccionar la siguiente clase pendiente por programar
-        indice_clase = len(actual.estado)
-        siguiente_clase = clases[indice_clase]
+            # Siguiente clase segun el orden fijo de asignacion
+            clase = clases[len(actual.estado)]
 
-        # Generar los sucesores probando cada franja y salon
-        for dia, franja in franjas:
-            for salon in salones:
-                # Comprobamos restricciones duras (profesor, salon o grupo no choquen)
-                if actual.estado.puede_asignar(siguiente_clase, dia, franja, salon):
-                    hijo_estado = actual.estado.asignar(siguiente_clase, dia, franja, salon)
+            # Generar sucesores compartidos (rompe simetria de salones y valida restricciones duras)
+            for dia, franja, salon, hijo in generar_sucesores(
+                actual.estado, clase, franjas, salones, romper_simetria_salones
+            ):
+                costo_arista = costo_paso(clase, dia, franja, profesores_no_disponibles)
+                nuevo_g = actual.g + costo_arista
+                nuevo_h = calcular_heuristica(hijo, total_clases)
 
-                    if hijo_estado.asignaciones in visitados:
-                        continue
+                hijo_nodo = Nodo(
+                    estado=hijo,
+                    padre=actual,
+                    accion=(clase.id_curso, dia, franja, salon),
+                    g=nuevo_g,
+                    h=nuevo_h,
+                )
+                frontera.append(hijo_nodo)
 
-                    # Restriccion blanda: penalizamos si la franja es de no disponibilidad del profesor
-                    penalizacion = 0
-                    horario_bloqueado = profesores_no_disponibles.get(siguiente_clase.id_profesor)
-                    if horario_bloqueado == (dia, franja):
-                        penalizacion = 5
+    except LimiteDeNodos:
+        limite_alcanzado = True
 
-                    # Costo acumulado g y valor heuristico h
-                    nuevo_g = actual.g + 1 + penalizacion
-                    nuevo_h = calcular_heuristica(hijo_estado, total_clases)
-
-                    accion = (siguiente_clase.id_curso, dia, franja, salon)
-                    hijo_nodo = Nodo(
-                        estado=hijo_estado,
-                        padre=actual,
-                        accion=accion,
-                        g=nuevo_g,
-                        h=nuevo_h
-                    )
-
-                    frontera.append(hijo_nodo)
-
-    tiempo_fin = time.time()
-    tiempo_total = round(tiempo_fin - tiempo_inicio, 4)
-
-    # Estructura del contrato acordado para comunicar con la interfaz
-    if solucion_encontrada is not None:
-        return {
-            "solucion": list(solucion_encontrada.asignaciones),
-            "encontro_solucion": True,
-            "nodos_explorados": nodos_explorados,
-            "tiempo_ejecucion": tiempo_total
-        }
-    else:
-        return {
-            "solucion": None,
-            "encontro_solucion": False,
-            "nodos_explorados": nodos_explorados,
-            "tiempo_ejecucion": tiempo_total
-        }
-
+    return armar_resultado(
+        solucion, costo_solucion, nodos_explorados, inicio, limite_alcanzado
+    )

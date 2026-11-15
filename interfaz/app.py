@@ -42,7 +42,7 @@ ALGORITMOS = {
     "Amplitud (BFS)": ("BFS", bfs, True),
     "Costo uniforme": ("Costo uniforme", costo_uniforme, True),
     "Profundidad iterativa": ("Prof. iterativa", profundidad_iterativa, True),
-    "A* (informado)": ("A*", a_estrella, False),
+    "A* (informado)": ("A*", a_estrella, True),
 }
 
 # clave, nombre del archivo, funcion lectora
