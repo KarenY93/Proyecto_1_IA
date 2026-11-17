@@ -8,6 +8,7 @@ class Nodo:
         self.f = g + h
 
     def __lt__(self, otro):
+        # si empatan en f, priorizamos el que tenga menor h (osea el que este mas cerca de la meta)
         if self.f == otro.f:
             return self.h < otro.h
         return self.f < otro.f

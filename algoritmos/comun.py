@@ -2,10 +2,12 @@ import time
 
 
 class LimiteDeNodos(Exception):
+    # excepcion propia para cortar la busqueda cuando se supera max_nodos y no colgar la UI
     pass
 
 
 def costo_paso(clase, dia, franja, profesores_no_disponibles):
+    # base 1 por clase, penalizamos con +5 si metemos al profesor en su horario bloqueado
     costo = 1
     if profesores_no_disponibles.get(clase.id_profesor) == (dia, franja):
         costo += 5
@@ -13,6 +15,8 @@ def costo_paso(clase, dia, franja, profesores_no_disponibles):
 
 
 def _salones_a_probar(estado, salones, romper_simetria):
+    # si los salones son todos iguales,probar todos los vacios genera ramas espejo
+    # basta con probar los que ya tienen alguna clase asignada + un salon nuevo disponible
     if not romper_simetria:
         return salones
 
@@ -24,12 +28,13 @@ def _salones_a_probar(estado, salones, romper_simetria):
             break
     return candidatos
 
-
+# esto define la creacion/expansion de nodos
 def generar_sucesores(estado, clase, franjas, salones, romper_simetria=True):
     if estado.esta_asignada(clase.id_curso):
         return
     candidatos = _salones_a_probar(estado, salones, romper_simetria)
     for dia, franja in franjas:
+        # si el profesor o grupo ya estan ocupados en esta franja, ni miramos los salones
         if not estado.puede_en_franja(clase, dia, franja):
             continue
         for salon in candidatos:
@@ -39,6 +44,7 @@ def generar_sucesores(estado, clase, franjas, salones, romper_simetria=True):
 
 
 def verificar_factibilidad(clases, franjas, salones):
+    # validaciones basicas para descartar casos imposibles antes de gastar memoria en el arbol
     n_franjas = len(set(franjas))
     if len(clases) > n_franjas * len(set(salones)):
         return "hay mas clases que pares (franja, salon)"

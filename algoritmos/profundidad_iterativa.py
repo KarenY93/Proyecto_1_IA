@@ -51,6 +51,9 @@ def profundidad_iterativa(clases, franjas, salones, profesores_no_disponibles=No
     solucion = None
     costo_solucion = None
     limite_alcanzado = False
+    # nota: en este CSP toda meta esta a profundidad exacta = total_clases.
+    # iterar limites menores (0, 1, 2...) solo obligaria a recorrer el arbol sin poder hallar nada.
+    # dejamos modo_clasico=True por si el evaluador pide ver el IDDFS puro desde 0.
     primer_limite = 0 if modo_clasico else total_clases
 
     try:

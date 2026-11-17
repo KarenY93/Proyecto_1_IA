@@ -4,7 +4,9 @@ from modelos.clase import Clase
 class Estado:
     def __init__(self, asignaciones=(), ocupados=frozenset(), ids=None):
         self.asignaciones = asignaciones
+        # pasamos ids precalculado para no tener que recorrer toda la tupla de asignaciones cada vez
         self._ids = ids if ids is not None else frozenset(a[0] for a in asignaciones)
+        # usamos frozenset aca porque buscar choques en listas normales hacia que el CSP fuera lentisimo
         self._ocupados = ocupados
 
     @staticmethod
@@ -19,6 +21,7 @@ class Estado:
         return id_clase in self._ids
 
     def puede_en_franja(self, clase, dia, franja):
+        # primero validamos profesor y grupo a nivel de franja; si choca aca, descartamos todos los salones de una
         return (
             (dia, franja, "profesor", clase.id_profesor) not in self._ocupados
             and (dia, franja, "grupo", clase.grupo) not in self._ocupados
@@ -34,6 +37,7 @@ class Estado:
 
     def asignar(self, clase, dia, franja, salon, verificar=True):
         if verificar and not self.puede_asignar(clase, dia, franja, salon):
+            # print(f"intento invalido para {clase.id_curso} en {dia} {franja}")
             raise ValueError(f"No se puede asignar {clase.id_curso} en {dia} {franja}")
         
         nuevos_ocupados = self._ocupados | frozenset(self._recursos(clase, dia, franja, salon))

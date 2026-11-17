@@ -27,6 +27,7 @@ def bfs(clases, franjas, salones, profesores_no_disponibles=None,
     if total_clases == 0:
         return armar_resultado(estado_inicial, 0, 1, inicio)
 
+    # usamos deque como cola FIFO; pop(0) en lista normal seria O(N) y haria esto inviable
     frontera = deque([(estado_inicial, 0)])
     nodos_explorados = 0
     solucion = None
@@ -38,6 +39,7 @@ def bfs(clases, franjas, salones, profesores_no_disponibles=None,
             estado, costo = frontera.popleft()
             nodos_explorados += 1
             if max_nodos is not None and nodos_explorados > max_nodos:
+                # print(f"Aviso: BFS alcanzo el tope de {max_nodos} nodos")
                 raise LimiteDeNodos
 
             if len(estado) == total_clases:
@@ -52,6 +54,7 @@ def bfs(clases, franjas, salones, profesores_no_disponibles=None,
                 nuevo_costo = costo + costo_paso(
                     clase, dia, franja, profesores_no_disponibles
                 )
+                # en BFS toda meta esta al mismo nivel, la primera generada ya es optima en profundidad
                 if len(hijo) == total_clases:
                     solucion = hijo
                     costo_solucion = nuevo_costo

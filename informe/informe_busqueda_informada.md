@@ -8,29 +8,29 @@
 
 El siguiente documento describe el desarrollo y las pruebas del motor de búsqueda informada para el problema de asignación de horarios académicos universitarios. El objetivo del problema consiste en asignar a cada sesión de clase un día, una franja horaria y un salón específico, cumpliendo con las restricciones duras del sistema (evitar cruces de profesor, de salón y de grupos de estudiantes) y bajando el costo derivado de las restricciones blandas (la no disponibilidad horaria reportada por los docentes).
 
-Para este módulo se seleccionó e implementó el algoritmo A* desde cero en Python, sin el uso de librerías externas de búsqueda o colas de prioridad predefinidas, de acuerdo con los lineamientos del proyecto.
+Para este módulo se uso el algoritmo A* desde cero en Python, sin usar librerías externas de búsqueda o colas de prioridad predefinidas, de acuerdo con las restricciones del proyecto.
 
 ### 2. Representación del Estado y Espacio de Búsqueda
 
-El espacio de búsqueda se modeló a partir de una asignación progresiva de materias:
+El espacio de búsqueda se hizo a partir de una asignación progresiva de materias:
 
 **Variables:** Cada curso o clase a programar (identificador de materia, profesor asignado y grupo de estudiantes).
 **Dominio:** Las combinaciones posibles de día, franja horaria y salón. Con 5 días, 4 franjas por día y 20 salones, existen hasta 400 opciones de asignación por clase.
 **Estado:** Se representa mediante el conjunto de asignaciones realizadas hasta el momento y el registro de los recursos que ya se encuentran ocupados en cada bloque de tiempo.
 **Transición:** Un paso de búsqueda consiste en tomar la siguiente clase pendiente y asignarla a una terna (día, franja, salón) que no presente conflicto con las clases ya programadas.
 
-Para estructurar la búsqueda se fijó un orden estricto de programación de las clases (se asigna primero la clase 1, luego la clase 2, y así sucesivamente). Dado que un horario completo requiere obligatoriamente la programación de todas las materias, fijar el orden de las asignaciones no elimina soluciones posibles y asegura que el espacio de búsqueda se comporte como un árbol, evitando que el algoritmo alcance un mismo estado por diferentes ramas.
+Para la búsqueda se fijó un orden de programación de las clases (se asigna primero la clase 1, luego la clase 2, y así sucesivamente). Dado que un horario completo requiere obligatoriamente la programación de todas las materias, fijar el orden de las asignaciones no elimina soluciones posibles y asegura que el espacio de búsqueda se comporte como un árbol, evitando que el algoritmo alcance un mismo estado por diferentes ramas.
 
 ### 3. Función Heurística y Costo Acumulado
 
 El algoritmo A* evalúa cada nodo mediante la función f(n) = g(n) + h(n):
 
-El costo acumulado g(n) se definió asignando un costo base de 1 por cada clase programada en el horario. Si una clase se asigna en la franja que el docente registró como no disponible, se aplica una penalización de 5 unidades adicionales (costo de paso igual a 6), guiando al algoritmo a evitar dichos horarios siempre que existan alternativas libres.
+El costo acumulado g(n) se definió asignando un costo base de 1 por cada clase programada en el horario. Si una clase se asigna en la franja que el docente registró como no disponible, se aplica una penalización de 5 unidades adicionales (costo de paso igual a 6), guiando al algoritmo a evitar esos horarios siempre que hayan alternativas libres.
 
 La heurística h(n) se diseñó como el número de clases que aún quedan pendientes por asignar en el estado actual:
 h(n) = total_clases - clases_asignadas
 
-Esta función es admisible debido a que cada materia restante requerirá forzosamente al menos una asignación en el horario, lo que sumará un mínimo de 1 unidad al costo real del camino. Por consiguiente, la estimación h jamás excede el costo real para alcanzar la meta. Asimismo, es consistente porque al avanzar un nivel en el árbol, la heurística disminuye exactamente en 1 unidad mientras que el costo real se incrementa en al menos 1 unidad.
+Esta función es admisible debido a que cada materia restante requerirá forzosamente al menos una asignación en el horario, lo que sumará un mínimo de 1 unidad al costo real del camino. Por lo tanto, la estimación h jamás excede el costo real para alcanzar la meta. Asimismo, es consistente porque al avanzar un nivel en el árbol, la heurística disminuye exactamente en 1 unidad mientras que el costo real se incrementa en al menos 1 unidad.
 
 En caso de empates en el valor de f(n), el algoritmo prioriza los nodos que tienen un menor valor de h(n), lo que permite avanzar de manera directa en profundidad hacia la meta una vez identificadas ramas libres de penalizaciones.
 
@@ -50,7 +50,7 @@ El resultado se devuelve en un diccionario estructurado que incluye la solución
 
 ### 5. Pruebas y Análisis de Resultados
 
-Se realizaron pruebas tanto en escenarios controlados para validar la lógica como con el conjunto completo de datos de 20 materias provisto en el proyecto.
+Se realizaron pruebas tanto en escenarios especificos para validar la lógica como con el conjunto completo de datos de 20 materias provisto en el proyecto.
 
 En las pruebas unitarias se verificaron casos límite:
 - Manejo correcto de entradas vacías y de una sola clase.
@@ -67,4 +67,4 @@ Al comparar este desempeño con los algoritmos no informados:
 
 ### 6. Conclusiones
 
-La implementación de A* demostró ser la alternativa más eficiente y equilibrada para este problema. La combinación de una heurística admisible basada en clases pendientes junto con la ruptura de simetrías en los salones permitió resolver el problema de 20 materias en milisegundos y con el menor número de nodos, garantizando el cumplimiento estricto de todas las restricciones duras y la satisfacción de las preferencias de los docentes.
+Encontramos que la implementación de A* demostró ser la alternativa más eficiente y equilibrada para este problema. La combinación de una heurística admisible basada en clases pendientes junto con la ruptura de simetrías en los salones permitió resolver el problema de 20 materias en milisegundos y con el menor número de nodos, Asi garantizando que cumplimos con todas las restricciones mencionadas. 
