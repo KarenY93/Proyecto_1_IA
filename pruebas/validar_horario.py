@@ -1,5 +1,4 @@
 def validar_horario(resultado, clases):
-    """Comprueba que cada clase este asignada una vez y sin conflictos."""
     assert resultado["encontro_solucion"], "Se esperaba una solucion."
 
     asignaciones = resultado["solucion"]

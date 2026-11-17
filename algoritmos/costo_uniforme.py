@@ -1,28 +1,16 @@
 import time
-
-try:
-    from modelos.estado import Estado
-    from algoritmos.comun import (
-        LimiteDeNodos,
-        armar_resultado,
-        costo_paso,
-        generar_sucesores,
-        verificar_factibilidad,
-    )
-except ImportError:
-    from ..modelos.estado import Estado
-    from .comun import (
-        LimiteDeNodos,
-        armar_resultado,
-        costo_paso,
-        generar_sucesores,
-        verificar_factibilidad,
-    )
+from modelos.estado import Estado
+from algoritmos.comun import (
+    LimiteDeNodos,
+    armar_resultado,
+    costo_paso,
+    generar_sucesores,
+    verificar_factibilidad,
+)
 
 
 def costo_uniforme(clases, franjas, salones, profesores_no_disponibles=None,
                    max_nodos=None, romper_simetria_salones=True, prechequeo=True):
-    """Busca primero los horarios parciales de menor costo acumulado."""
     if profesores_no_disponibles is None:
         profesores_no_disponibles = {}
 
@@ -38,7 +26,6 @@ def costo_uniforme(clases, franjas, salones, profesores_no_disponibles=None,
     if total_clases == 0:
         return armar_resultado(estado_inicial, 0, 1, inicio)
 
-    # Los costos son enteros, así que cada lista guarda nodos con el mismo costo.
     frontera = {0: [(estado_inicial, 0)]}
     nodos_pendientes = 1
     costo_actual = 0

@@ -1,29 +1,17 @@
 import time
-
-try:
-    from modelos.estado import Estado
-    from algoritmos.comun import (
-        LimiteDeNodos,
-        armar_resultado,
-        costo_paso,
-        generar_sucesores,
-        verificar_factibilidad,
-    )
-except ImportError:
-    from ..modelos.estado import Estado
-    from .comun import (
-        LimiteDeNodos,
-        armar_resultado,
-        costo_paso,
-        generar_sucesores,
-        verificar_factibilidad,
-    )
+from modelos.estado import Estado
+from algoritmos.comun import (
+    LimiteDeNodos,
+    armar_resultado,
+    costo_paso,
+    generar_sucesores,
+    verificar_factibilidad,
+)
 
 
 def profundidad_iterativa(clases, franjas, salones, profesores_no_disponibles=None,
                           modo_clasico=False, max_nodos=None,
                           romper_simetria_salones=True, prechequeo=True):
-    """Busca en profundidad aumentando el límite hasta cubrir todas las clases."""
     if profesores_no_disponibles is None:
         profesores_no_disponibles = {}
 

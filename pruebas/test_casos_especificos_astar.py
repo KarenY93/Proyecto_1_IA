@@ -86,7 +86,6 @@ def test_conflicto_salon():
 def test_prechequeos_imposibilidad():
     print("6. Probando deteccion por prechequeo de casos imposibles...")
     
-    # 6.1 Mas clases que capacidad (pares franja x salon)
     c_muchas = [Clase(f"C{i}", f"M{i}", f"P{i}", f"G{i}") for i in range(5)]
     r1 = a_estrella(c_muchas, [("Lunes", "08-10"), ("Lunes", "10-12")], ["S1"])
     assert r1["encontro_solucion"] is False
@@ -94,7 +93,6 @@ def test_prechequeos_imposibilidad():
     assert "mas clases que pares" in r1["motivo"]
     print(f"   -> 6.1 Exceso de clases detectado: {r1['motivo']} (0 nodos).")
 
-    # 6.2 Profesor con mas clases que franjas
     c_prof = [
         Clase("C1", "M1", "P1", "G1"),
         Clase("C2", "M2", "P1", "G2"),
@@ -106,7 +104,6 @@ def test_prechequeos_imposibilidad():
     assert "profesor P1 tiene mas clases" in r2["motivo"]
     print(f"   -> 6.2 Sobrecarga de profesor detectada: {r2['motivo']} (0 nodos).")
 
-    # 6.3 Grupo con mas clases que franjas
     c_grupo = [
         Clase("C1", "M1", "P1", "G_SOBRE"),
         Clase("C2", "M2", "P2", "G_SOBRE"),
@@ -121,7 +118,6 @@ def test_prechequeos_imposibilidad():
 
 def test_imposible_en_arbol():
     print("7. Probando caso imposible en arbol (con prechequeo desactivado)...")
-    # Dos clases del mismo profesor y solo una franja, pero 2 salones (pasa prechequeo basico)
     clases = [
         Clase("C1", "M1", "P_UNICO", "G1"),
         Clase("C2", "M2", "P_UNICO", "G2"),
@@ -141,7 +137,6 @@ def test_preferencia_blanda_optimizacion():
     franjas = [("Lunes", "08:00-10:00"), ("Martes", "10:00-12:00")]
     salones = ["S101"]
     
-    # El profesor NO puede los Lunes 08:00-10:00
     no_disp = {"PROF_X": ("Lunes", "08:00-10:00")}
     r = a_estrella(clase, franjas, salones, no_disp)
     validar_horario(r, clase)

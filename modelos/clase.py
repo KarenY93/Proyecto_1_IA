@@ -1,21 +1,11 @@
-from dataclasses import dataclass
-from typing import Optional
-
-
-@dataclass(frozen=True)
 class Clase:
-    """Datos de una clase o materia que debe ser programada en el horario."""
+    def __init__(self, id_curso, nombre_materia, id_profesor, grupo, numero_estudiantes=None, tipo_salon=None):
+        self.id_curso = id_curso.strip()
+        self.nombre_materia = nombre_materia.strip()
+        self.id_profesor = id_profesor.strip()
+        self.grupo = grupo.strip()
+        self.numero_estudiantes = numero_estudiantes
+        self.tipo_salon = tipo_salon
 
-    id_curso: str
-    nombre_materia: str
-    id_profesor: str
-    grupo: str
-    numero_estudiantes: Optional[int] = None
-    tipo_salon: Optional[str] = None
-
-    def __post_init__(self) -> None:
-        if not self.id_curso.strip():
-            raise ValueError("id_curso no puede estar vacío.")
-        if self.numero_estudiantes is not None and self.numero_estudiantes < 0:
-            raise ValueError(f"numero_estudiantes negativo en {self.id_curso!r}.")
-
+    def __repr__(self):
+        return f"Clase({self.id_curso}, {self.nombre_materia})"

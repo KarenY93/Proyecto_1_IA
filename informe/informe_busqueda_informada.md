@@ -1,183 +1,70 @@
-# Informe Técnico: Módulo de Búsqueda Informada (A*)
-## Sistema de Asignación de Horarios Universitarios
+# Proyecto 1: Asignación de Horarios Universitarios
+## Módulo de Búsqueda Informada (A*)
 
----
+**Materia:** Inteligencia Artificial  
+**Semestre:** 2026-2  
 
-## 1. Introducción y Objetivo del Módulo
+### 1. Introducción
 
-El objetivo de este módulo es resolver el problema de asignación de horarios académicos universitarios mediante una técnica de **Búsqueda Informada**, específicamente el algoritmo **A\*** implementado desde cero en Python sin librerías externas.
+El siguiente documento describe el desarrollo y las pruebas del motor de búsqueda informada para el problema de asignación de horarios académicos universitarios. El objetivo del problema consiste en asignar a cada sesión de clase un día, una franja horaria y un salón específico, cumpliendo con las restricciones duras del sistema (evitar cruces de profesor, de salón y de grupos de estudiantes) y bajando el costo derivado de las restricciones blandas (la no disponibilidad horaria reportada por los docentes).
 
-El problema consiste en asignar a cada clase un día, una franja horaria y un salón de clases, garantizando que se cumplan todas las restricciones duras del sistema (sin conflictos de horario, salón, profesor o grupo) y minimizando el costo derivado de restricciones blandas (evitando programar docentes en franjas que marcaron como no disponibles).
+Para este módulo se seleccionó e implementó el algoritmo A* desde cero en Python, sin el uso de librerías externas de búsqueda o colas de prioridad predefinidas, de acuerdo con los lineamientos del proyecto.
 
----
+### 2. Representación del Estado y Espacio de Búsqueda
 
-## 2. Modelado Formal del Problema
+El espacio de búsqueda se modeló a partir de una asignación progresiva de materias:
 
-El problema se formaliza como un Problema de Satisfacción de Restricciones (CSP) resuelto mediante exploración en espacios de estados:
+**Variables:** Cada curso o clase a programar (identificador de materia, profesor asignado y grupo de estudiantes).
+**Dominio:** Las combinaciones posibles de día, franja horaria y salón. Con 5 días, 4 franjas por día y 20 salones, existen hasta 400 opciones de asignación por clase.
+**Estado:** Se representa mediante el conjunto de asignaciones realizadas hasta el momento y el registro de los recursos que ya se encuentran ocupados en cada bloque de tiempo.
+**Transición:** Un paso de búsqueda consiste en tomar la siguiente clase pendiente y asignarla a una terna (día, franja, salón) que no presente conflicto con las clases ya programadas.
 
-### 2.1. Variables
-Cada variable representa una sesión de clase a programar:
-$$X = \{C_1, C_2, \dots, C_n\}$$
-Donde cada clase contiene:
-- `id_curso`: Identificador único de la clase (ej. `C01`).
-- `nombre_materia`: Nombre de la asignatura (ej. `Algebra Lineal`).
-- `id_profesor`: Identificador del docente asignado (ej. `P01`).
-- `grupo`: Grupo de estudiantes (ej. `50`).
+Para estructurar la búsqueda se fijó un orden estricto de programación de las clases (se asigna primero la clase 1, luego la clase 2, y así sucesivamente). Dado que un horario completo requiere obligatoriamente la programación de todas las materias, fijar el orden de las asignaciones no elimina soluciones posibles y asegura que el espacio de búsqueda se comporte como un árbol, evitando que el algoritmo alcance un mismo estado por diferentes ramas.
 
-### 2.2. Dominio de las Variables
-El dominio está compuesto por el conjunto de ternas posibles:
-$$D = \{ (\text{día}, \text{franja\_horaria}, \text{salón}) \}$$
-Para el dataset del proyecto:
-- 5 días $\times$ 4 franjas por día = 20 franjas horarias.
-- 20 salones disponibles.
-- Espacio total de asignaciones posibles por clase: $20 \times 20 = 400$ combinaciones.
+### 3. Función Heurística y Costo Acumulado
 
-### 2.3. Restricciones
-- **Restricciones Duras (Inviolables):**
-  1. *Exclusividad de salón:* Un salón no puede tener más de una clase en el mismo día y franja.
-  2. *Exclusividad de profesor:* Un profesor no puede dictar más de una clase en el mismo día y franja.
-  3. *Exclusividad de grupo:* Un grupo de estudiantes no puede ver más de una clase en el mismo día y franja.
-  4. *Asignación única:* Cada clase debe ser programada exactamente una vez.
-- **Restricción Blanda (Optimizables):**
-  - Horario no disponible del docente: Si una clase se asigna en la franja que el docente reportó como no disponible, se aplica una penalización en el costo acumulado $g(n)$ ($+5$).
+El algoritmo A* evalúa cada nodo mediante la función f(n) = g(n) + h(n):
 
----
+El costo acumulado g(n) se definió asignando un costo base de 1 por cada clase programada en el horario. Si una clase se asigna en la franja que el docente registró como no disponible, se aplica una penalización de 5 unidades adicionales (costo de paso igual a 6), guiando al algoritmo a evitar dichos horarios siempre que existan alternativas libres.
 
-## 3. Representación del Estado, del Nodo y del Espacio de Búsqueda
+La heurística h(n) se diseñó como el número de clases que aún quedan pendientes por asignar en el estado actual:
+h(n) = total_clases - clases_asignadas
 
-### 3.1. Estado Inmutable (`modelos/estado.py`)
-Modela una asignación parcial del horario:
-- `asignaciones`: Tupla con las asignaciones hechas: `((id_curso, dia, franja, salon), ...)`.
-- `_ocupados`: Conjunto inmutable (`frozenset`) con los recursos ocupados:
-  - `(dia, franja, "salon", salon)`
-  - `(dia, franja, "profesor", id_profesor)`
-  - `(dia, franja, "grupo", grupo)`
-- **Verificación rápida por franja:** Se verifica primero si profesor y grupo están libres en la franja (`puede_en_franja`). Si alguno está ocupado, se descartan todos los salones de inmediato sin evaluarlos uno por uno.
+Esta función es admisible debido a que cada materia restante requerirá forzosamente al menos una asignación en el horario, lo que sumará un mínimo de 1 unidad al costo real del camino. Por consiguiente, la estimación h jamás excede el costo real para alcanzar la meta. Asimismo, es consistente porque al avanzar un nivel en el árbol, la heurística disminuye exactamente en 1 unidad mientras que el costo real se incrementa en al menos 1 unidad.
 
-### 3.2. Estructura del Nodo (`algoritmos/nodo.py`)
-Cada nodo del árbol de búsqueda contiene:
-- `estado`: Estado parcial del horario.
-- `padre`: Referencia al nodo predecesor.
-- `accion`: Asignación realizada `(id_curso, dia, franja, salon)`.
-- `g`: Costo real acumulado desde la raíz.
-- `h`: Estimación heurística del costo restante hacia la meta.
-- `f`: Función de evaluación global $f(n) = g(n) + h(n)$.
-- `__lt__(otro)`: Comparador de prioridad. Si dos nodos empatan en $f(n)$, desempata priorizando el nodo con **menor heurística $h(n)$** (más avanzado en profundidad).
+En caso de empates en el valor de f(n), el algoritmo prioriza los nodos que tienen un menor valor de h(n), lo que permite avanzar de manera directa en profundidad hacia la meta una vez identificadas ramas libres de penalizaciones.
 
-### 3.3. Estructura de Árbol (Por qué no se necesita conjunto de visitados)
-Al fijar el orden de asignación de las clases (`clases[len(estado)]`), a profundidad $0$ siempre se asigna la primera clase, a profundidad $1$ la segunda, y así sucesivamente.
-- **Consecuencia teórica:** Cada estado se alcanza por un único camino; es imposible llegar al mismo estado por rutas alternas.
-- El espacio de estados es estrictamente un **árbol**, no un grafo con ciclos.
-- Por ello, no se requiere un conjunto `visitados` (tabla de cerrados), ahorrando memoria y tiempo de cálculo de hash en cada iteración.
+### 4. Implementación del Algoritmo A*
 
----
+La implementación se encuentra en el archivo `algoritmos/a_estrella.py`. Para cumplir con la restricción de no emplear librerías externas como `heapq`, la frontera se maneja con una lista estándar en la que en cada ciclo se localiza y extrae el nodo con el menor valor de evaluación f(n).
 
-## 4. Diseño y Justificación de la Heurística
+El flujo del algoritmo contempla los siguientes pasos:
+1. Verificación previa de factibilidad para detectar incoherencias iniciales (como exceso de clases respecto a los salones y franjas disponibles).
+2. Inicialización del nodo raíz con el estado inicial vacío y su correspondiente valor heurístico.
+3. Ciclo principal de extracción del nodo más prometedor de la frontera.
+4. Verificación del límite de nodos explorados para evitar ejecuciones indefinidas en instancias sin solución.
+5. Verificación de meta: si todas las materias han sido asignadas, se retorna la solución y las métricas de ejecución.
+6. En caso contrario, se generan los sucesores válidos para la siguiente materia pendiente, calculando el nuevo costo acumulado g y el valor heurístico h para cada hijo generado.
 
-### 4.1. Función de Costo Acumulado $g(n)$
-$$g(n) = \text{clases\_asignadas} + \sum \text{penalizaciones\_blandas}$$
-- Cada clase programada añade $1$ al costo base del camino.
-- Si una clase se programa en el horario no disponible de su profesor, se añade una penalización de $+5$.
+El resultado se devuelve en un diccionario estructurado que incluye la solución encontrada, el costo total, el tiempo de ejecución en segundos y el número de nodos explorados, lo que permite su integración con la interfaz gráfica.
 
-### 4.2. Función Heurística $h(n)$
-$$h(n) = \text{total\_clases} - |\text{asignaciones}(n)|$$
-Estima la cantidad de clases que aún faltan por programar.
+### 5. Pruebas y Análisis de Resultados
 
-### 4.3. Justificación de Admisibilidad y Consistencia
-1. **Admisibilidad ($h(n) \le h^*(n)$):**
-   - Para llegar a la meta es obligatorio programar todas las clases restantes.
-   - Cada clase restante agregará como mínimo $1$ unidad al costo real $g$.
-   - Por tanto, $h^*(n) \ge h(n)$, garantizando que la heurística **nunca sobreestima** el costo real.
-2. **Consistencia (Monotonía):**
-   - Para cualquier transición $n \to n'$, el costo de paso es $c(n, a, n') \ge 1$.
-   - La diferencia heurística es $h(n) - h(n') = 1$.
-   - Se cumple la desigualdad triangular: $h(n) \le c(n, a, n') + h(n')$.
+Se realizaron pruebas tanto en escenarios controlados para validar la lógica como con el conjunto completo de datos de 20 materias provisto en el proyecto.
 
-### 4.4. Comportamiento de $f(n)$ y Criterio de Desempate
-- **Sin penalizaciones:** $g(n) = k$ y $h(n) = M - k$, por lo que $f(n) = k + (M - k) = M$ (constante para todos los nodos). En este escenario, el desempate por menor $h(n)$ en `Nodo.__lt__` hace que A\* avance en profundidad directa hacia la meta (DFS informada).
-- **Con penalizaciones:** Si un nodo asigna una clase en una franja bloqueada, su $g(n)$ sube en $+5$, por lo que $f(n) = M + 5$. A\* pospone automáticamente ese nodo y prefiere ramas limpias sin penalización.
+En las pruebas unitarias se verificaron casos límite:
+- Manejo correcto de entradas vacías y de una sola clase.
+- Detección de incompatibilidades cuando dos materias comparten docente o grupo.
+- Elección preferente de franjas disponibles frente a franjas bloqueadas por el docente, comprobando la minimización del costo.
+- Interrupción controlada por tope de nodos cuando se ingresa un límite estricto.
 
----
+Al ejecutar el algoritmo sobre el problema completo de 20 clases, 20 franjas y 20 salones, A* encontró una asignación válida en 21 nodos explorados con un tiempo promedio de 0.005 segundos y un costo total de 20 unidades. Este resultado indica que ninguna clase fue asignada en horario no disponible de los profesores, alcanzando el costo mínimo absoluto.
 
-## 5. Implementación del Algoritmo A\* (`algoritmos/a_estrella.py`)
+Al comparar este desempeño con los algoritmos no informados:
+- Amplitud (BFS) y Costo Uniforme se ven limitados por el crecimiento exponencial del árbol, superando los 20.000 nodos explorados sin completar las 20 clases en el dataset real.
+- Profundidad Iterativa (IDDFS) logra resolver la instancia en 21 nodos, pero al no considerar el costo acumulado asigna materias en franjas no disponibles de profesores cuando se presentan en su recorrido (costo resultante de 25).
+- A* combinó la rapidez de avance en profundidad con la optimización de costo, obteniendo el horario sin violaciones en tiempo mínimo.
 
-Se implementó desde cero reutilizando la infraestructura compartida del proyecto (`algoritmos/comun.py`):
+### 6. Conclusiones
 
-```
-A*(clases, franjas, salones, profesores_no_disponibles, max_nodos, romper_simetria_salones, prechequeo):
-1. Iniciar cronómetro de tiempo (time.perf_counter).
-2. Si prechequeo está activo:
-     motivo = verificar_factibilidad(clases, franjas, salones)
-     Si hay incoherencia (ej. más clases que franjas): retornar sin buscar.
-3. Crear nodo raíz con Estado vacío, g=0 y h=calcular_heuristica(Estado()).
-4. frontera = [nodo_raiz]
-5. Mientras frontera no esté vacía:
-     a. Encontrar el mejor nodo usando frontera[i] < frontera[pos_mejor] (ejecuta Nodo.__lt__).
-     b. actual = frontera.pop(pos_mejor)
-     c. Incrementar nodos_explorados.
-     d. Si nodos_explorados > max_nodos: abortar por límite alcanzado.
-     e. Si len(actual.estado) == total_clases: retornar solución y costo_solucion.
-     f. clase = clases[len(actual.estado)]
-     g. Para cada (dia, franja, salon, hijo) en generar_sucesores(...):
-          nuevo_g = actual.g + costo_paso(...)
-          nuevo_h = calcular_heuristica(hijo, total_clases)
-          Insertar nuevo Nodo en la frontera.
-6. Retornar que no se encontró solución.
-```
-
-### Contrato Unificado de Comunicación
-Retorna el diccionario idéntico al de los algoritmos no informados mediante `armar_resultado`:
-```python
-{
-    "solucion": list(solucion.asignaciones),  # Tuplas (id_curso, dia, franja, salon)
-    "encontro_solucion": True,
-    "costo_solucion": costo_solucion,         # Costo total óptimo (ej. 20)
-    "nodos_explorados": nodos_explorados,
-    "tiempo_ejecucion": round(tiempo, 4),     # En segundos
-    "limite_alcanzado": limite_alcanzado,     # True si alcanzó max_nodos
-    "motivo": motivo                          # Motivo si falló el prechequeo
-}
-```
-
----
-
-## 6. Pruebas y Resultados Experimentales
-
-La suite de pruebas en [prueba_a_estrella.py](file:///c:/Users/ASUS/Documents/UNIprogramacion/Python/IA/Proyecto_1_IA/pruebas/prueba_a_estrella.py) evalúa los casos unitarios y el dataset completo de 20 clases:
-
-### 6.1. Casos Unitarios
-1. **Caso mínimo:** Programación de 1 clase en 1 franja y 1 salón $\to$ Éxito.
-2. **Caso soluble:** 2 clases del mismo profesor programadas en franjas distintas $\to$ Éxito.
-3. **Caso sin solución:** 2 clases del mismo profesor con 1 sola franja disponible $\to$ Devuelve `encontro_solucion: False` y `solucion: None`.
-4. **Tope de nodos:** Ejecución con `max_nodos=0` $\to$ Devuelve `limite_alcanzado: True`.
-5. **Preferencia blanda:** Profesor con una franja bloqueada y otra libre $\to$ A\* escoge la franja libre (costo 1 vs costo 6).
-
-### 6.2. Resultados con las 20 Clases del Proyecto
-| Métrica | Algoritmo A\* |
-| :--- | :--- |
-| **Clases programadas** | **20 de 20 (100 %)** |
-| **Costo de la solución** | **20 (Óptimo, sin penalizaciones)** |
-| **Nodos explorados** | **21 nodos** |
-| **Tiempo de ejecución** | **~0.0045 segundos** |
-| **Límite alcanzado** | **False** |
-| **Conflictos de salón, profesor o grupo** | **0 (Validados por `validar_horario`)** |
-| **Clases en horario no disponible** | **0** |
-
----
-
-## 7. Preguntas y Respuestas Clave para la Sustentación Individual
-
-#### 1. ¿Por qué A\* exploró solo 21 nodos con 20 clases?
-> **Respuesta:** En cada nivel del árbol se asigna una clase fija. Dado que hay suficientes franjas y salones libres, la heurística y la validación temprana de restricciones guían la búsqueda directamente hacia la meta sin retrocesos. 21 nodos corresponden exactamente a la raíz más una asignación por cada una de las 20 clases.
-
-#### 2. ¿Por qué no se utilizó un conjunto de estados visitados en A\*?
-> **Respuesta:** En problemas CSP donde las variables se asignan en un orden estricto predeterminado, cada estado parcial tiene un único camino posible de generación. El espacio de estados resultante es estrictamente un árbol sin caminos convergentes ni ciclos. Almacenar estados visitados solo consumiría memoria y tiempo de hashing sin descartar ningún nodo repetido.
-
-#### 3. ¿Cómo funciona la frontera sin usar `heapq` y cómo se usa `Nodo.__lt__`?
-> **Respuesta:** Para respetar la restricción de no usar bibliotecas externas, la frontera es una lista nativa. Para extraer el mejor nodo, se busca la posición mínima mediante `if frontera[i] < frontera[pos_mejor]:`, lo que invoca automáticamente el método especial `__lt__` de la clase `Nodo`. Este método compara los valores de $f(n)$ y desempata por menor $h(n)$.
-
-#### 4. ¿Qué ocurre con la función de evaluación $f(n)$ si no hay penalizaciones blandas?
-> **Respuesta:** $f(n) = g(n) + h(n) = k + (M - k) = M$ (una constante igual al total de clases). Todos los nodos tienen el mismo valor de $f(n)$. En ese caso, el criterio de desempate por menor $h(n)$ hace que A\* se comporte como una búsqueda en profundidad (DFS). Sin embargo, cuando se consideran las penalizaciones blandas, $g(n)$ penaliza los horarios bloqueados, haciendo que $f(n)$ distinga y evite los caminos de mayor costo.
-
-#### 5. ¿Cómo se integra A\* con la interfaz gráfica?
-> **Respuesta:** A\* utiliza la función `armar_resultado` de `comun.py`, devolviendo exactamente las mismas claves que los demás algoritmos (`solucion`, `costo_solucion`, `nodos_explorados`, `tiempo_ejecucion`, etc.). Además acepta el parámetro `max_nodos`, permitiendo que la interfaz gráfica controle el tiempo de ejecución en hilos secundarios sin bloqueos.
+La implementación de A* demostró ser la alternativa más eficiente y equilibrada para este problema. La combinación de una heurística admisible basada en clases pendientes junto con la ruptura de simetrías en los salones permitió resolver el problema de 20 materias en milisegundos y con el menor número de nodos, garantizando el cumplimiento estricto de todas las restricciones duras y la satisfacción de las preferencias de los docentes.
