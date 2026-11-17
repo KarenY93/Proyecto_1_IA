@@ -1,15 +1,3 @@
-"""Interfaz grafica (Tkinter) del sistema de asignacion de horarios.
-
-Paneles:
-  1. Carga de archivos (boton Examinar, ruta y estado de lectura).
-  2. Configuracion (algoritmo) y boton "Generar Horario".
-  3. Grilla del horario (filas = franjas, columnas = dias).
-  4. Estadisticas comparativas de los algoritmos ya ejecutados.
-
-El algoritmo se ejecuta en un hilo aparte para que la ventana no se congele
-(BFS y costo uniforme pueden tardar). El hilo devuelve el resultado por una
-cola y la ventana la revisa periodicamente con after().
-"""
 import os
 import queue
 import sys
@@ -60,7 +48,6 @@ COLOR_OCUPADA = "#dbeafe"
 
 
 class App(tk.Tk):
-    """Ventana principal de la aplicacion."""
 
     def __init__(self):
         super().__init__()
@@ -68,22 +55,19 @@ class App(tk.Tk):
         self.geometry("1100x720")
         self.minsize(900, 600)
 
-        self.datos = {}              # clave -> datos leidos del archivo
-        self.var_ruta = {}           # clave -> StringVar con la ruta
-        self.var_estado = {}         # clave -> StringVar con el indicador
-        self.lbl_estado = {}         # clave -> Label (para cambiar el color)
-        self.nombres_prof = {}       # id_profesor -> "Nombre Apellido"
-        self.solucion = None         # ultima solucion mostrada
-        self.cola = queue.Queue()    # resultados que envia el hilo
+        self.datos = {}              
+        self.var_ruta = {}          
+        self.var_estado = {}        
+        self.lbl_estado = {}         
+        self.nombres_prof = {} 
+        self.solucion = None
+        self.cola = queue.Queue()
 
         self._crear_panel_archivos()
         self._crear_panel_configuracion()
-        self._crear_panel_estadisticas()   # va antes: se ancla abajo
+        self._crear_panel_estadisticas()
         self._crear_panel_horario()
 
-    # ------------------------------------------------------------------
-    # Construccion de paneles
-    # ------------------------------------------------------------------
     def _crear_panel_archivos(self):
         marco = ttk.LabelFrame(self, text="Archivos de entrada")
         marco.pack(fill="x", padx=10, pady=(10, 5))
@@ -145,8 +129,6 @@ class App(tk.Tk):
         self.combo_grupo.pack(side="left")
         self.combo_grupo.bind("<<ComboboxSelected>>", lambda _e: self._dibujar_horario())
 
-        # La grilla vive dentro de un Canvas con barras de desplazamiento,
-        # para poder ver el horario completo aunque no quepa en la ventana.
         contenedor = ttk.Frame(marco)
         contenedor.pack(fill="both", expand=True, padx=5, pady=5)
 
@@ -162,7 +144,6 @@ class App(tk.Tk):
         self.id_ventana = self.canvas.create_window(
             (0, 0), window=self.frame_grilla, anchor="nw"
         )
-        # Actualiza el area desplazable cuando cambia el tamano de la grilla.
         self.frame_grilla.bind(
             "<Configure>",
             lambda _e: self.canvas.configure(scrollregion=self.canvas.bbox("all")),
@@ -177,7 +158,6 @@ class App(tk.Tk):
         self.canvas.bind("<Leave>", lambda _e: self._activar_rueda(False))
 
     def _activar_rueda(self, activar):
-        """Conecta o desconecta la rueda del mouse con el desplazamiento vertical."""
         eventos = ("<MouseWheel>", "<Button-4>", "<Button-5>")
         for evento in eventos:
             if activar:
@@ -186,7 +166,6 @@ class App(tk.Tk):
                 self.unbind_all(evento)
 
     def _rueda(self, evento):
-        """Desplaza el horario (Windows/macOS usan delta; Linux usa Button-4/5)."""
         if evento.num == 4:
             self.canvas.yview_scroll(-1, "units")
         elif evento.num == 5:
@@ -209,11 +188,7 @@ class App(tk.Tk):
             self.tabla.column(col, anchor="center", width=120)
         self.tabla.pack(fill="x", padx=5, pady=5)
 
-    # ------------------------------------------------------------------
-    # Carga de archivos
-    # ------------------------------------------------------------------
     def _examinar(self, clave):
-        """Abre el selector de archivo y lee el .txt con su funcion lectora."""
         carpeta = os.path.join(RUTA_PROYECTO, "archivos")
         ruta = filedialog.askopenfilename(
             title="Seleccionar archivo",
@@ -251,11 +226,7 @@ class App(tk.Tk):
             self.spin_n.config(to=len(datos))
             self.var_n.set(str(len(datos)))
 
-    # ------------------------------------------------------------------
-    # Ejecucion del algoritmo
-    # ------------------------------------------------------------------
     def _generar(self):
-        """Valida que esten los 4 archivos y lanza el algoritmo en un hilo."""
         faltan = [n for c, n, _ in ARCHIVOS if c not in self.datos]
         if faltan:
             messagebox.showwarning(
@@ -283,7 +254,6 @@ class App(tk.Tk):
         self.after(100, self._revisar_cola)
 
     def _ejecutar(self, nombre, n):
-        """Corre el algoritmo elegido (en el hilo) y deja el resultado en la cola."""
         _, funcion, con_tope = ALGORITMOS[nombre]
         kwargs = {"max_nodos": MAX_NODOS} if con_tope else {}
         try:
@@ -297,7 +267,6 @@ class App(tk.Tk):
             self.cola.put(("error", nombre, str(error)))
 
     def _revisar_cola(self):
-        """Revisa si el hilo ya termino; si no, vuelve a mirar en 100 ms."""
         try:
             tipo, nombre, contenido = self.cola.get_nowait()
         except queue.Empty:
@@ -312,7 +281,6 @@ class App(tk.Tk):
         self._mostrar_resultado(nombre, contenido)
 
     def _mostrar_resultado(self, nombre, resultado):
-        """Actualiza mensaje, estadisticas y horario con el resultado."""
         corto = ALGORITMOS[nombre][0]
         encontro = resultado["encontro_solucion"]
 
@@ -347,11 +315,7 @@ class App(tk.Tk):
             self.solucion = resultado["solucion"]
             self._dibujar_horario()
 
-    # ------------------------------------------------------------------
-    # Grilla del horario
-    # ------------------------------------------------------------------
     def _dibujar_horario(self):
-        """Dibuja la grilla: filas = franjas, columnas = dias."""
         for widget in self.frame_grilla.winfo_children():
             widget.destroy()
         if not self.solucion:
@@ -404,7 +368,6 @@ class App(tk.Tk):
 
 
 def main():
-    """Punto de entrada: abre la ventana."""
     App().mainloop()
 
 
